@@ -33,7 +33,9 @@ struct Board : View {
     
     var body: some View {
         
+        
         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 15), count: 3), content: {
+            
             
             ForEach(0..<9, id: \.self){index in
                 
@@ -64,7 +66,12 @@ struct Board : View {
                         
                         //disable non empty space
                         if moves[index] == ""{
-                            moves[index] = currentPlayer ? "X" : "O"
+//                            moves[index] = currentPlayer ? "X" : "O"
+                            
+                            if !currentPlayer {
+                                moves[index] = "O"
+                                checkWinner()
+                            }
                             
                             currentPlayer.toggle()
                         }
@@ -77,6 +84,14 @@ struct Board : View {
         .onChange(of: moves, perform: { value in
             
             checkWinner()
+        })
+        .onChange(of: currentPlayer, perform: { value in
+            
+            withAnimation(Animation.easeIn(duration: 0.5)){
+                CPUPlay()
+                checkWinner()
+            }
+            
         })
         .alert(isPresented: $gameOver, content: {
             
@@ -163,6 +178,202 @@ struct Board : View {
         
         
         return false;
+    }
+    
+    func nextAvailMove()->Int{
+        
+        for i in 0..<9 {
+            if moves[i] == "" {
+                return i
+            }
+        }
+        return -1
+    }
+    
+    func CPUPlay(){
+        //cpu
+        if currentPlayer == true {
+//            let emptySpot = nextAvailMove()
+            if !gameOver {
+                let emptySpot = minimaxCPU(currentMoves: moves, currentPlayer: currentPlayer)
+              //  print("Empty Slots: ", emptySpot)
+             //   NSLog("Hello")
+                if emptySpot.bestMove != -1 {
+                    moves[emptySpot.bestMove] = "X"
+                    currentPlayer.toggle()
+                }
+
+            }
+
+        }
+    }
+    
+    
+    func minimaxCPU(currentMoves: Array<String>, currentPlayer: Bool)->(bestScore: Int, bestMove: Int){
+        
+        let CPU = "X" // true
+        let humanPlayer = "O" //false
+        
+        //base case
+        if isGameOver(currentBoard: currentMoves) {
+            return (utility(currentBoard: currentMoves), -1)
+        }
+        
+        var bestScore = (currentPlayer) ? Int.min : Int.max
+        var bestMove = -1
+        
+        for i in 0..<9 {
+            
+            if currentMoves[i] != "" {
+                continue
+            }
+            
+            //deep copy of moves
+            var newMoves = Array.init(currentMoves)
+            //add move to get successors
+            newMoves[i] = currentPlayer ? CPU : humanPlayer
+            let newPlayer = currentPlayer ? false : true
+            //recursive call
+            let results = minimaxCPU(currentMoves: newMoves, currentPlayer: newPlayer)
+            print("Best results: ",  results.bestScore)
+            
+            //max player
+            if currentPlayer == true{ //cpu
+                
+                if results.bestScore > bestScore {
+                    bestScore = results.bestScore
+                    bestMove = i
+                    
+                }
+            } else { //min player
+                
+                if results.bestScore < bestScore {
+                    bestScore = results.bestScore
+                    bestMove = i
+                }
+            }
+        }
+        
+        return (bestScore, bestMove)
+    }
+    
+    func utility(currentBoard: Array<String>)->Int{
+        var nonBlanks = 0;
+        var blanks = 0;
+        //find # of non-blank spaces
+     //   print(currentBoard)
+        for move in currentBoard {
+            if (move == "") {
+                blanks = blanks + 1
+            }
+        }
+        
+        nonBlanks = 9 - blanks
+        print("non blanks: ", nonBlanks)
+        for i in 0..<8 {
+            var set = ""
+            
+            switch i {
+            case 0:
+                set = "" + currentBoard[0] + currentBoard[1] + currentBoard[2]
+                break
+            case 1:
+                set = "" + currentBoard[3] + currentBoard[4] + currentBoard[5]
+                break
+            case 2:
+                set = "" + currentBoard[6] + currentBoard[7] + currentBoard[8]
+                break
+            case 3:
+                set = "" + currentBoard[0] + currentBoard[3] + currentBoard[6]
+                break
+            case 4:
+                set = "" + currentBoard[1] + currentBoard[4] + currentBoard[7]
+                break
+            case 5:
+                set = "" + currentBoard[2] + currentBoard[5] + currentBoard[8]
+                break
+            case 6:
+                set = "" + currentBoard[2] + currentBoard[4] + currentBoard[6]
+                break
+            case 7:
+                set = "" + currentBoard[0] + currentBoard[4] + currentBoard[8]
+                break
+            default: break
+                
+            }
+            
+            if set == "OOO" {
+                
+                var score = (10 - nonBlanks)
+                if currentPlayer {
+                    score = -1 * score
+                }
+                print("Score: ", score)
+                return score
+                
+            } else if set == "XXX" {
+                var score = 10 - nonBlanks
+                if !currentPlayer {
+                    score = -1 * score
+                }
+                print("Score: ", score)
+                return score
+            }
+        }
+        
+        //draw
+        return 0
+    }
+    
+    func isGameOver(currentBoard: Array<String>)->Bool{
+        
+        for i in 0..<8 {
+            var set = ""
+            
+            switch i {
+            case 0:
+                set = "" + currentBoard[0] + currentBoard[1] + currentBoard[2]
+                break
+            case 1:
+                set = "" + currentBoard[3] + currentBoard[4] + currentBoard[5]
+                break
+            case 2:
+                set = "" + currentBoard[6] + currentBoard[7] + currentBoard[8]
+                break
+            case 3:
+                set = "" + currentBoard[0] + currentBoard[3] + currentBoard[6]
+                break
+            case 4:
+                set = "" + currentBoard[1] + currentBoard[4] + currentBoard[7]
+                break
+            case 5:
+                set = "" + currentBoard[2] + currentBoard[5] + currentBoard[8]
+                break
+            case 6:
+                set = "" + currentBoard[2] + currentBoard[4] + currentBoard[6]
+                break
+            case 7:
+                set = "" + currentBoard[0] + currentBoard[4] + currentBoard[8]
+                break
+            default: break
+                
+            }
+            
+            if set == "OOO" {
+                
+                return true
+                
+            } else if set == "XXX" {
+                return true
+            }
+            
+            for i in 0..<9 {
+                if currentBoard[i] == "" { //incomplete
+                    return false
+                }
+            }
+        }
+        return true
     }
 }
 
